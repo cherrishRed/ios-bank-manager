@@ -6,15 +6,27 @@
 ## 목차
 
 - [프로젝트 소개](#프로젝트-소개)
-- [프로젝트 구조](#프로젝트-구조)
 - [키워드](#키워드)
 - [STEP 1](#step-1)
 - [STEP 2](#step-2)
 - [STEP 3](#step-3)
+- [STEP 4](#step-4)
 
 ## 프로젝트 소개
 
-은행창구 매니저
+**🏦 여러명의 은행원들이 다양한 업무를 처리하고 있습니다!**
+
+**🏦 타이머로 업무시간을 알려 줍니다!**
+
+**🏦 10명의 고객을 추가해 보세요!**
+
+**🏦 초기화 버튼으로 하던 업무를 모두 없앨 수 있습니다!**
+
+<div>
+    <img src="https://i.imgur.com/xJP5jaS.gif" width="30%">
+    <img src="https://i.imgur.com/iXaLLc8.gif" width="30%">
+    <img src="https://i.imgur.com/e43njYs.gif" width="30%">
+</div>
 
 ## 개발환경 및 라이브러리
 
@@ -22,11 +34,13 @@
 [![xcode](https://img.shields.io/badge/Xcode-13.3.1-blue)]()
 
 ## 키워드
-`Unit Test` `자료구조` `Queue` `Stack` `Protocol` `associatedtype` `Generic` `Test Double` `Struct` `Class` `의존성 관리도구` `cocoapod` `Swift Project Manager` `Home Brew` `Mint` `SwiftLint`
+`Unit Test` `자료구조` `Queue` `Stack` `Protocol` `associatedtype` `Generic` `Test Double` `Struct` `Class` `의존성 관리도구` `cocoapod` `Swift Project Manager` `Home Brew` `Mint` `SwiftLint` `시간 복잡도` `DispatchQueue` `Race Condition` `OperationQueue` `Timer` `NotificationCenter` `Delegate` `DateFomatter` `MVC` `고정폭 글꼴` `ScrollView`
 
 ## 자세한 고민 보기
 [STEP 1 PR](https://github.com/yagom-academy/ios-bank-manager/pull/145)
 [STEP 2 PR](https://github.com/yagom-academy/ios-bank-manager/pull/159)
+[STEP 3 PR](https://github.com/yagom-academy/ios-bank-manager/pull/169)
+[STEP 4 PR](https://github.com/yagom-academy/ios-bank-manager/pull/177)
 
 ## [STEP 1]
 
@@ -279,3 +293,194 @@ switch timeoutResult {
 }
 ```
 `wait(time: 시간)`: DispatchTimeoutResult 를 반환하는데 이 값을 통해 시간 내에 그룹 내 모든 task 가 완료되었는지 판단합니다.
+
+## [STEP 3]
+
+### 🚀 trouble shooting
+* DispatchQueue enter(), leave()
+
+#### DispatchQueue enter(), leave()
+처음에 DispatchGroup으로 사용해야한다고 생각했고, enter()로 Group의 시작을 알려야 한다고 생각해서 enter()를 사용해주었습니다.
+```swift
+let buisnessGroup = DispatchGroup()
+buisnessGroup.enter()
+// 그룹으로 처리할 비동기 로직
+```
+하지만 생각해보니, 비동기 로직으로 두개를 동작시킨다면, 어떤 비동기 로직이 먼저 끝날 지 보장할 수 없다는 것을 알았고, 이로 인해 leave()를 사용하여 안정성을 높여야 한다는 것을 알았습니다.
+```swift
+let buisnessGroup = DispatchGroup()
+buisnessGroup.enter()
+// 그룹으로 처리할 비동기 로직
+buisnessGroup.leave() 
+```
+이렇게 변경해주게 되었습니다.
+
+### ✏️ 배운 개념
+* DispatchQueue notify
+
+#### DispatchQueue notify
+wait() 를 사용하고 그 이후에 오게 될 로직을 호출 할 수도 있지만, 
+이럴 경우 notify 를 사용 할 수 도 있습니다. 
+```swift
+workGroup.notify(queue: .main) {
+    print("업무가 마감 되었습니다.")
+    print(self.reportOfDay())
+}
+```
+## [STEP 4]
+
+### 🚀 trouble shooting
+* 흔들리는 글자 (고정폭 글꼴)
+* 초기화하면 실행하고 있던 코드 중지 하기
+
+#### 흔들리는 글자 (고정폭 글꼴)
+타이머 숫자가 라벨에 나타나게 했을 때, 각 문자간의 간격이 미묘하게 달라 글자가 흔들리는 것 처럼 보이는 현상이 일어났습니다.
+monospacedSystemFont(ofSize:weight:) 또는 monospacedDigitSystemFont(ofSize:weight:) 같은 고정폭 글꼴을 사용해 글자가 흔들리지 않도록 처리해 주었습니다.
+
+일반적인 폰트
+
+<img src="https://i.imgur.com/ZbnD9VW.png" width="300">
+
+고정폭 폰트 
+
+monospacedDigitSystemFont
+
+<img src="https://i.imgur.com/Iy04O4G.png" width="320">
+
+monospacedSystemFont
+
+<img src="https://i.imgur.com/98FnQIw.png" width="370">
+
+#### 초기화하면 실행하고 있던 코드 중지 하기
+dispatch Queue 의 경우 코드를 중간에 중지할 수 있는 방법이 없어서, 실행중인 코드를 초기화 시키는 것이 불가능했습니다. 
+그래서 Operation으로 일부분 코드를 변경하여 주어, 중간에 초기화 버튼을 누르면 OperationQueue 의 일들을 중단하고 삭제 할 수 있게 되었습니다.
+
+```swift
+let depositQueue = OperationQueue()
+let loanQueue = OperationQueue()
+```
+```swift
+func manageBanker() {
+    let banker = Banker()
+    while !customers.isEmpty {
+        guard let custormer = customers.deQueue(), let task = custormer.task else {
+            return
+        }
+        workGroup.enter()
+        switch task {
+        case .deposit:
+            depositQueue.addOperation {
+                banker.work(customer: custormer)
+                self.workGroup.leave()
+            }
+        case .loan:
+            loanQueue.addOperation {
+                banker.work(customer: custormer)
+                self.workGroup.leave()
+            }
+        }
+    }
+    workGroup.notify(queue: .main) {
+        NotificationCenter.default.post(name: .timer, object: nil)
+    }
+}
+```
+
+```swift
+func resetAll() {
+    depositQueue.cancelAllOperations()
+    loanQueue.cancelAllOperations()
+    numberOfCustomer = 0
+}
+```
+
+
+### ✏️ 배운 개념
+* Timer
+* DateFommater
+* 사용 목적에 따른 데이터 넘기는 방법
+
+#### Timer
+Timer를 사용하기 위해선, Timer.scheduledTimer()를 사용을 해주어야 합니다.
+```swift
+let timer = Timer.scheduledTimer(timeInterval: 1, target: self, selector: #selector(someObjcFunc), userInfo: nil, repeats: true)
+```
+`timerInterval` : 타이머의 간격
+`target` : 어떤 뷰에서 실행 할 것 인지
+`selector` : 타이머로 반복 작업을 해줄 함수
+`userInfo` : 보낼 정보
+`repeats` : 반복을 할 것인지
+```swift 
+// userInfo 예시
+let info: Int = 777
+
+@objc func someObjcFunc() {
+    guard let userInfo = timer.userInfo else {
+        print("userInfo is Nil")
+        return
+    }
+    print(userInfo)
+}
+
+// 출력 결과 : 777
+```  
+
+일반적으로 timer는 Timer?라는 타입을 만들어서 타이머를 작동시키려면 `timer.fire()`멈출 곳에서 `timer.invalidate()`를 불러줍니다. 하지만 invalidate()로 끝난 timer는 절대로 다시 시작할 수 없기 때문에, 다시 필요하다면 새로운 timer를 생성해서 작동시켜 주어야 합니다.
+
+Timer에는 두 가지 문제점이 있습니다.
+1. 자원을 많이 사용한다.
+계속해서 반복하기 때문에, timeInterval 마다 작동하게 됩니다. 어플에서 사용하게 된다면 자원도 많이 사용되고, 이로 인해서 배터리 사용량도 올라가게 됩니다. 이 문제를 해결하기 위해서 Delay를 줄 수 있습니다. 이 때 사용 되는 것이`tolerance`입니다.
+```swift
+timer.tolerance = DelayTime
+```
+`DelayTime`에 지체할 시간을 넣어주면, 타이머의 `timeInterval + tolerance = 시간` 
+이러한 식으로 사용할 수 있습니다. DelayTime을 사용하여, 타이머를 덜 사용되게 만드는 것 입니다.
+
+2. Main Thread와 관련된 문제
+View에서 사용될 때, Timer가 작동되지 않는 경우가 있습니다. 사용자의 입력을 받는 상태 동안은 Timer가 작동하지 않습니다. RunLoop는 사용자 입력을 관리하고 또한 Timer와 밀접한 관계가 있지만, 직접적으로 Timer source에 대한 관리를 해주지 않기 때문에 반환되지 않는다고 합니다. 그래서 View는 Main Thread에서 작동되고, Timer에 대한 반환이 일어나지 않는 상태로 RunLoop가 사용자 입력을 처리하기 때문에, 작동하지 않는 것 입니다. 이 해결 방안으로는 RunLoop에서 Timer를 관리하도록 해주면 되겠죠?
+```swift=
+RunLoop.current.add(timer!, forMode: .common)
+```
+위 코드를 사용하여, RunLoop에 Timer객체를 추가 하여 관리하도록 하게 하면 됩니다.
+
+
+#### DateFormatter
+String 타입의 날짜를(포멧이 맞춰져 있는) Date 타입으로 변경하거나, Date 타입을 특정한 포멧으로된 String 타입으로 변경할 때 사용합니다.
+```swift
+var dateFormatter = DateFormatter()
+```  
+> 포멧 작성법
+> yyyy: 년도 
+> MM: 월 
+> dd: 일 
+> HH: 시간 [24시간]
+> hh: 시간 [12시간]
+> mm: 분 
+> ss: 초 
+> SSS: 밀리초 
+> a: (ex: AM, PM Locale에 따라 오전, 오후로 표기 가능)
+> EEEE: 요일 (ex: 목요일) 
+> E: 요일 (ex: 목)
+> 
+```swift
+// 포멧 설정
+dateFormatter.dateFormat = "MM월 dd일 : HH시 mm분"
+// String 을 Date 으로 변경
+let dateText: String = "12월 10일 : 11시 10분"
+let dateDate = dateFormatter.date(from: dateText)
+
+// 포멧 설정 변경 
+dateFormatter.dateFormat = "dd-HH"
+
+// Date 를 String 으로
+let finaldate = dateFormatter.string(from: dateDate)
+// "10-11"
+``` 
+
+
+#### 사용 목적에 따른 데이터 넘기는 방법
+
+이번 프로젝트에서는 NotificationCenter를 사용하여, 모든 데이터를 전달했습니다. 하지만 NotificationCenter는 broadcast로 불특정 다수에게 데이터를 전송할 때(push, 로그인, 로그아웃)이러한 경우에만 사용한다고 합니다. 또한 의존성도 올라가기 때문에, 일반적으로 Delegate를 많이 사용합니다. Delegate로 접근 했었으나, 이번 프로젝트에서 Delegate를 사용하려면 모든 로직을 변경해주어야 했습니다. 이로 인해서 Delegate를 사용하려면 MVC 패턴을 잘 지키고, Delegate에 맞는 로직을 생각해야 한다는 것을 배웠습니다. 
+
+
+
